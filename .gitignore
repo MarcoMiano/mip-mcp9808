@@ -1,0 +1,5 @@
+# Ignore micropico project files
+.micropico
+
+# Ignore vscode workspace files
+.vscode
