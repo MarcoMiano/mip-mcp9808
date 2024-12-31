@@ -145,11 +145,32 @@ class TestMCP9808(unittest.TestCase):
         # Check if the alerts limit registers are unlocked
         self.assertFalse(self.sensor.alerts_lock)
 
+    def test_alert_control(self) -> None:
+        self.sensor_reset()
+        self.sensor.init()
+        # Get current temperature
+        temp: float = self.sensor.get_temperature()
+        # Enable alerts
+        self.sensor.enable_alert()
+        # Check if alerts are enabled
+        self.assertTrue(self.sensor.alert_ctrl)
+        # Set lower limit to current temperature + 10°C
+        self.sensor.set_alert_lower_limit(temp + 10)
+        sleep_ms(10)
+        # Check if hardware alert is triggered
+        self.assertEqual(self.alert.value(), 0)
+        # Disable alerts
+        self.sensor.disable_alert()
+        # Check if alerts are disabled
+        self.assertFalse(self.sensor.alert_ctrl)
+        # Check if hardware alert is cleared
+        self.assertEqual(self.alert.value(), 1)
+
     def test_comp_lower_alerts(self) -> None:
         self.sensor_reset()
         self.sensor.init()
         # Get current temperature
-        temp = self.sensor.get_temperature()
+        temp: float = self.sensor.get_temperature()
         # Check if alert is disabled and in comparator mode
         self.assertFalse(self.sensor.alert_ctrl)
         self.assertFalse(self.sensor.alert_mode)
@@ -178,7 +199,7 @@ class TestMCP9808(unittest.TestCase):
         self.sensor_reset()
         self.sensor.init()
         # Get current temperature
-        temp = self.sensor.get_temperature()
+        temp: float = self.sensor.get_temperature()
         # Check if alert is disabled and in comparator mode
         self.assertFalse(self.sensor.alert_ctrl)
         self.assertFalse(self.sensor.alert_mode)
@@ -207,7 +228,7 @@ class TestMCP9808(unittest.TestCase):
         self.sensor_reset()
         self.sensor.init()
         # Get current temperature
-        temp = self.sensor.get_temperature()
+        temp: float = self.sensor.get_temperature()
         # Check if alert is disabled and in comparator mode
         self.assertFalse(self.sensor.alert_ctrl)
         self.assertFalse(self.sensor.alert_mode)
@@ -236,7 +257,7 @@ class TestMCP9808(unittest.TestCase):
         self.sensor_reset()
         self.sensor.init()
         # Get current temperature
-        temp = self.sensor.get_temperature()
+        temp: float = self.sensor.get_temperature()
         # Check if alert is disabled and in comparator mode
         self.assertFalse(self.sensor.alert_ctrl)
         self.assertFalse(self.sensor.alert_mode)
@@ -280,7 +301,7 @@ class TestMCP9808(unittest.TestCase):
         self.sensor_reset()
         self.sensor.init()
         # Get current temperature
-        temp = self.sensor.get_temperature()
+        temp: float = self.sensor.get_temperature()
         # Check if alert is disabled and in comparator mode
         self.assertFalse(self.sensor.alert_ctrl)
         self.assertFalse(self.sensor.alert_mode)
@@ -324,7 +345,7 @@ class TestMCP9808(unittest.TestCase):
         self.sensor_reset()
         self.sensor.init()
         # Get current temperature
-        temp = self.sensor.get_temperature()
+        temp: float = self.sensor.get_temperature()
         # Check if alert is disabled and in comparator mode
         self.assertFalse(self.sensor.alert_ctrl)
         self.assertFalse(self.sensor.alert_mode)
