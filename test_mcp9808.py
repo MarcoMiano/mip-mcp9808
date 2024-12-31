@@ -112,7 +112,7 @@ class TestMCP9808(unittest.TestCase):
     def test_shutdown(self) -> None:
         self.sensor.shutdown()
         self.assertTrue(self.sensor.shdn)
-        self.sensor.shutdown(wake=True)
+        self.sensor.wake()
         self.assertFalse(self.sensor.shdn)
 
     def test_crit_lock(self) -> None:
