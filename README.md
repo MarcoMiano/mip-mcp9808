@@ -24,32 +24,32 @@ The sensor will restore all the settings to the defaults every time is power cyc
 - Alerts limit lock: False (unlocked)
 - Alert status: False (not asserted)
 - Alert control: False (alert output disabled)
-- Alert threshold selection: False (T~UPPER~, T~LOWER~ and T~CRIT~)
+- Alert threshold selection: False (T<sub>UPPER</sub>, T<sub>LOWER</sub> and T<sub>CRIT</sub>)
 - Alert mode: False (`comparator` mode)
-- T~HYST~ : 0°C
-- T~UPPER~: 0°C
-- T~LOWER~: 0°C
-- T~CRIT~: 0°C
+- T<sub>HYST</sub> : 0°C
+- T<sub>UPPER</sub>: 0°C
+- T<sub>LOWER</sub>: 0°C
+- T<sub>CRIT</sub>: 0°C
 - Resolution: 0.0625°C
 
 ## Resolution
 The sensor has 4 possible resolutions with different conversion times:
-- 0.5°C: t~CONV~ ≃ 30ms or 33 readings per second (typical)
-- 0.25°C: t~CONV~ ≃ 65ms or 15 readings per second (typical)
-- 0.125°C: t~CONV~ ≃ 130ms or 7 readings per second (typical)
-- 0.0625°C: t~CONV~ ≃ 250ms or 4 readings per second (typical)
+- 0.5°C: t<sub>CONV</sub> ≃ 30ms or 33 readings per second (typical)
+- 0.25°C: t<sub>CONV</sub> ≃ 65ms or 15 readings per second (typical)
+- 0.125°C: t<sub>CONV</sub> ≃ 130ms or 7 readings per second (typical)
+- 0.0625°C: t<sub>CONV</sub> ≃ 250ms or 4 readings per second (typical)
 
 ## Alerts and interrupts
 The sensor has optional features to operate an alert output that will trigger when the temperature cross  certain thresholds:
-- T~CRIT~: critical threshold alert, trigger the alert when T~A~ >= T~CRIT~ and reset when T~A~ < T~CRIT~ - T~HYST~ 
-- T~UPPER~: upper threshold alert, trigger the alert when T~A~ > T~UPPER~ and reset when T~A~ <= T~UPPER~ - T~HYST~
-- T~LOWER~: lower threshold alert, trigger the alert when T~A~ < T~LOWER~ - T~HYST~ and reset when T~A~ >= T~LOWER~
+- T<sub>CRIT</sub>: critical threshold alert, trigger the alert when T<sub>A</sub> >= T<sub>CRIT</sub> and reset when T<sub>A</sub> < T<sub>CRIT</sub> - T<sub>HYST</sub> 
+- T<sub>UPPER</sub>: upper threshold alert, trigger the alert when T<sub>A</sub> > T<sub>UPPER</sub> and reset when T<sub>A</sub> <= T<sub>UPPER</sub> - T<sub>HYST</sub>
+- T<sub>LOWER</sub>: lower threshold alert, trigger the alert when T<sub>A</sub> < T<sub>LOWER</sub> - T<sub>HYST</sub> and reset when T<sub>A</sub> >= T<sub>LOWER</sub>
 
-Another parameter used to calculate the trigger or reset point of the alert is the Hysteresis T~HYST~. It can be set using the `set_hysteresis_mode()` method.
+Another parameter used to calculate the trigger or reset point of the alert is the Hysteresis T<sub>HYST</sub>. It can be set using the `set_hysteresis_mode()` method.
 
 The alert output can operate in a `comparator` mode or `interrupt` mode:
 - `comparator` mode: the alert output is active for the whole duration of the alert and will reset it self automatically when the alert condition is resolved
-- `interrupt` mode: the alert output will activate when a alert condition is met and will remain active unless `irq_clear()` method is called. The T~CRIT~ threshold will force the alert output to behave as if in `comparator` mode so when the critical threshold trigger an alert it will not be possible to clear the interrupt but it will reset itself when the alert condition is resolved.
+- `interrupt` mode: the alert output will activate when a alert condition is met and will remain active unless `irq_clear()` method is called. The T<sub>CRIT</sub> threshold will force the alert output to behave as if in `comparator` mode so when the critical threshold trigger an alert it will not be possible to clear the interrupt but it will reset itself when the alert condition is resolved.
 
 The alert output mode can be chosen with the `set_alert_mode()` method.
 
@@ -60,8 +60,8 @@ The alert can trigger with all three threshold or only with the critical thresho
 The alerts are normally disabled, it is possible to enable them using the `enable_alert()` method and to disable them using the `disable_alert()` method.
 
 Alert thresholds can be locked using the methods `lock_crit_limit()` and `lock_alerts_limit()`.
-`lock_crit_limit()` will lock the T~CRIT~ threshold.
-`lock_alerts_limit()` will lock the T~UPPER~ and T~LOWER~ thresholds.
+`lock_crit_limit()` will lock the T<sub>CRIT</sub> threshold.
+`lock_alerts_limit()` will lock the T<sub>UPPER</sub> and T<sub>LOWER</sub> thresholds.
 
 ## Usage
 
@@ -107,8 +107,8 @@ It's not possible to put the sensor in `low power` mode when either the `crit_lo
 The methods don't accept any argument and return `None`
 
 ### `lock_crit_limit()` and `lock_alerts_limit()` methods
-The `lock_crit_limit()` will lock the T~CRIT~ register (0x4)
-The `lock_alert_limit()` will lock the T~UPPER~ and T~LOWER~ registers (0x2 and 0x3)
+The `lock_crit_limit()` will lock the T<sub>CRIT</sub> register (0x4)
+The `lock_alert_limit()` will lock the T<sub>UPPER</sub> and T<sub>LOWER</sub> registers (0x2 and 0x3)
 ```python
 # Lock the Tcrit register
 t_sensor.lock_crit_limit()
@@ -176,7 +176,7 @@ It's possible to enable or disable the alert output when in `low power` mode but
 The methods don't accept any argument and return `None`
 
 ### `set_alert_threshold()` method
-The `set_alert_threshold()` method set which thresholds will trigger the alert output, T~CRIT~ or T~CRIT~, T~UPPER~, T~LOWER~.
+The `set_alert_threshold()` method set which thresholds will trigger the alert output, T<sub>CRIT</sub> or T<sub>CRIT</sub>, T<sub>UPPER</sub>, T<sub>LOWER</sub>.
 The power-up default is 
 ```python
 # Set the alert output to trigger only on Tcrit
@@ -186,8 +186,8 @@ t_sensor.set_alert_threshold(only_crit=True)
 t_sensor.set_alert_threshold(only_crit=False)
 ```
 The method accept one `bool` argument `only_crit`:
-- if `True` alert output will only trigger on T~CRIT~
-- if `False` alert output will trigger on T~CRIT~, T~UPPER~, T~LOWER~
+- if `True` alert output will only trigger on T<sub>CRIT</sub>
+- if `False` alert output will trigger on T<sub>CRIT</sub>, T<sub>UPPER</sub>, T<sub>LOWER</sub>
 
 If `alerts_lock` is set is not possible to select which threshlods can trigger the alert output.If attempted a warning is issued if in `debug` mode.
 The method return `None`.
@@ -228,7 +228,7 @@ It's possible to change mode of the alert ouput when the sensor is in `low power
 The method return `None`
 
 ### `set_upper_limit()`, `set_lower_limit()` and `set_crit_limit()` methods
-The `set_upper_limit()`, `set_lower_limit()` and `set_crit_limit()` methods set the upper, lower and crit threshold registers T~UPPER~, T~LOWER~, T~CRIT~.
+The `set_upper_limit()`, `set_lower_limit()` and `set_crit_limit()` methods set the upper, lower and crit threshold registers T<sub>UPPER</sub>, T<sub>LOWER</sub>, T<sub>CRIT</sub>.
 ```python
 # Set Tupper to 43.5°C
 t_sensor.set_upper_limit(43.5)
@@ -282,9 +282,9 @@ triggers: tuple[bool, bool, bool] = t_sensor.get_alerts_triggers()
 
 The method doesn't accept any argument.
 The method return 3 `bool` in a `tuple` `tuple[bool, bool, bool]` :
-1. First element is `True` if T~A~ >= T~CRIT~
-2. Second element is `True` if T~A~ > T~UPPER~
-3. Third element is `True` if T~A~ < T~LOWER~
+1. First element is `True` if T<sub>A</sub> >= T<sub>CRIT</sub>
+2. Second element is `True` if T<sub>A</sub> > T<sub>UPPER</sub>
+3. Third element is `True` if T<sub>A</sub> < T<sub>LOWER</sub>
 
 Trigger bits are not influenced by `alert_mode`, `alert_pol` or `alert_ctrl`. These are the triggers that can affect the alert output.
 
@@ -293,7 +293,7 @@ If the sensor is in `low_power` mode it will return the triggers based on the la
 
 
 ### Custom Address
-The sensor has a default address of `0x18` or `0b0011000`. This address is partially hardcoded on the silicon itself. The user has the ability to change the last 3 bit of the address to have up to 7 different sensors on one I^2^C bus using the `A0` `A1` `A2` pins.
+The sensor has a default address of `0x18` or `0b0011000`. This address is partially hardcoded on the silicon itself. The user has the ability to change the last 3 bit of the address to have up to 7 different sensors on one I<sup>2</sup>C bus using the `A0` `A1` `A2` pins.
 ```python
 # Set the full address
 t_sensor = MCP9808(i2c=i2c, addr=0x1A)
