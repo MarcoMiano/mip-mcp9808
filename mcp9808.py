@@ -471,15 +471,21 @@ class MCP9808(object):
         self._get_config()
         return self.alert
 
-    def enable_alert(self, disable=False) -> None:
-        """Enable or disable the alert output.
+    def enable_alert(self) -> None:
+        """Enable the alert output.
 
-        Args:
-            ``disable`` (bool, optional): Disable the alert output if True. Defaults to False.
         Returns:
             ``None``
         """
-        self._set_config(alert_ctrl=not disable)
+        self._set_config(alert_ctrl=True)
+
+    def disable_alert(self) -> None:
+        """Disable the alert output.
+
+        Returns:
+            ``None``
+        """
+        self._set_config(alert_ctrl=False)
 
     def set_alert_threshold(self, only_crit=False) -> None:
         """Set the alert output select.
