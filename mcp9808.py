@@ -131,7 +131,8 @@ class MCP9808(object):
             self._addr = addr
         else:
             self._addr: int = self.BASE_ADDR | (A2 << 2) | (A1 << 1) | A0
-        self.init()
+        self._check_device()
+        self._get_config()
 
     def _check_device(self) -> None:
         """Checks the device's manufacturer ID and device ID to ensure it is the correct device.
@@ -389,17 +390,6 @@ class MCP9808(object):
                     f"[WARN] Failed to set alert limit. Set {buf[0]:08b}-{buf[1]:08b}",
                     f"but got {check[0]:08b}-{check[1]:08b}",
                 )
-
-    def init(self) -> None:
-        """Initializes the sensor.
-
-        It will checks the manufacturer and device IDs and retrieves the configuration
-        of the device.
-        Returns:
-            ``None``
-        """
-        self._check_device()
-        self._get_config()
 
     def shutdown(self) -> None:
         """Put the sensor in low power mode.
