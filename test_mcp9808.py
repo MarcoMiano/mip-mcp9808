@@ -87,7 +87,6 @@ class TestMCP9808(unittest.TestCase):
 
     def test_powerup_defaults(self) -> None:
         self.sensor_reset()
-        self.sensor.init()
         self.assertEqual(self.sensor.hyst_mode, mcp9808.HYST_00)
         self.assertFalse(self.sensor.shdn)
         self.assertFalse(self.sensor.crit_lock)
@@ -100,13 +99,13 @@ class TestMCP9808(unittest.TestCase):
         self.assertFalse(self.sensor.alert_mode)
 
     def test_hysteresis_set(self) -> None:
-        self.sensor.set_hysteresis_mode(hyst_mode=mcp9808.HYST_15)
+        self.sensor.hyst_mode = mcp9808.HYST_15
         self.assertEqual(self.sensor.hyst_mode, mcp9808.HYST_15)
-        self.sensor.set_hysteresis_mode(hyst_mode=mcp9808.HYST_30)
+        self.sensor.hyst_mode = mcp9808.HYST_30
         self.assertEqual(self.sensor.hyst_mode, mcp9808.HYST_30)
-        self.sensor.set_hysteresis_mode(hyst_mode=mcp9808.HYST_60)
+        self.sensor.hyst_mode = mcp9808.HYST_60
         self.assertEqual(self.sensor.hyst_mode, mcp9808.HYST_60)
-        self.sensor.set_hysteresis_mode(hyst_mode=mcp9808.HYST_00)
+        self.sensor.hyst_mode = mcp9808.HYST_00
         self.assertEqual(self.sensor.hyst_mode, mcp9808.HYST_00)
 
     def test_shutdown(self) -> None:
@@ -126,7 +125,6 @@ class TestMCP9808(unittest.TestCase):
         self.assertFalse(self.sensor.alert_ctrl)
         # Reset sensor
         self.sensor_reset()
-        self.sensor.init()
         # Check if the critical limit register is unlocked
         self.assertFalse(self.sensor.crit_lock)
 
@@ -141,13 +139,11 @@ class TestMCP9808(unittest.TestCase):
         self.assertTrue(self.sensor.alerts_lock)
         # Reset sensor
         self.sensor_reset()
-        self.sensor.init()
         # Check if the alerts limit registers are unlocked
         self.assertFalse(self.sensor.alerts_lock)
 
     def test_alert_control(self) -> None:
         self.sensor_reset()
-        self.sensor.init()
         # Get current temperature
         temp: float = self.sensor.get_temperature()
         # Enable alerts
@@ -168,7 +164,6 @@ class TestMCP9808(unittest.TestCase):
 
     def test_comp_lower_alerts(self) -> None:
         self.sensor_reset()
-        self.sensor.init()
         # Get current temperature
         temp: float = self.sensor.get_temperature()
         # Check if alert is disabled and in comparator mode
@@ -197,7 +192,6 @@ class TestMCP9808(unittest.TestCase):
 
     def test_comp_upper_alerts(self) -> None:
         self.sensor_reset()
-        self.sensor.init()
         # Get current temperature
         temp: float = self.sensor.get_temperature()
         # Check if alert is disabled and in comparator mode
@@ -226,7 +220,6 @@ class TestMCP9808(unittest.TestCase):
 
     def test_comp_crit_alerts(self) -> None:
         self.sensor_reset()
-        self.sensor.init()
         # Get current temperature
         temp: float = self.sensor.get_temperature()
         # Check if alert is disabled and in comparator mode
@@ -255,7 +248,6 @@ class TestMCP9808(unittest.TestCase):
 
     def test_irq_lower_alerts(self) -> None:
         self.sensor_reset()
-        self.sensor.init()
         # Get current temperature
         temp: float = self.sensor.get_temperature()
         # Check if alert is disabled and in comparator mode
@@ -299,7 +291,6 @@ class TestMCP9808(unittest.TestCase):
 
     def test_irq_upper_alerts(self) -> None:
         self.sensor_reset()
-        self.sensor.init()
         # Get current temperature
         temp: float = self.sensor.get_temperature()
         # Check if alert is disabled and in comparator mode
@@ -343,7 +334,6 @@ class TestMCP9808(unittest.TestCase):
 
     def test_irq_crit_alerts(self) -> None:
         self.sensor_reset()
-        self.sensor.init()
         # Get current temperature
         temp: float = self.sensor.get_temperature()
         # Check if alert is disabled and in comparator mode
