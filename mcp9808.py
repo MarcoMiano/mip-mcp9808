@@ -161,31 +161,31 @@ class MCP9808(object):
 
         This method reads 2 bytes from the configuration register of the sensor.
         It then parses the bytes to update the following instance attributes:
-            ``hyst_mode``: Hysteresis mode (int)
-            ``shdn``: Shutdown mode (bool)
-            ``crit_lock``: Critical temperature register lock (bool)
-            ``alerts_lock``: Alerts temperature registers lock (bool)
-            ``irq_clear_bit``: Interrupt clear bit (bool)
-            ``alert``: Alert output status (bool)
-            ``alert_ctrl``: Alert control (bool)
-            ``alert_sel``: Alert output select (bool)
-            ``alert_pol``: Alert output polarity (bool)
-            ``alert_mode``: Alert output mode (bool)
+            ``_hyst_mode``: Hysteresis mode (int)
+            ``_shdn``: Shutdown mode (bool)
+            ``_crit_lock``: Critical temperature register lock (bool)
+            ``_alerts_lock``: Alerts temperature registers lock (bool)
+            ``_irq_clear_bit``: Interrupt clear bit (bool)
+            ``_alert``: Alert output status (bool)
+            ``_alert_ctrl``: Alert control (bool)
+            ``_alert_sel``: Alert output select (bool)
+            ``_alert_pol``: Alert output polarity (bool)
+            ``_alert_mode``: Alert output mode (bool)
         Returns:
             ``None``
         """
 
         buf: bytes = self._i2c.readfrom_mem(self._addr, self.REG_CFG, 2)
-        self.hyst_mode: int = (buf[0] >> 1) & 0x03
-        self.shdn = bool(buf[0] & 0x01)
-        self.crit_lock = bool(buf[1] & 0x80)
-        self.alerts_lock = bool(buf[1] & 0x40)
+        self._hyst_mode: int = (buf[0] >> 1) & 0x03
+        self._shdn = bool(buf[0] & 0x01)
+        self._crit_lock = bool(buf[1] & 0x80)
+        self._alerts_lock = bool(buf[1] & 0x40)
         self.irq_clear_bit = bool(buf[1] & 0x20)
-        self.alert = bool(buf[1] & 0x10)
-        self.alert_ctrl = bool(buf[1] & 0x08)
-        self.alert_sel = bool(buf[1] & 0x04)
+        self._alert = bool(buf[1] & 0x10)
+        self._alert_ctrl = bool(buf[1] & 0x08)
+        self._alert_sel = bool(buf[1] & 0x04)
         self.alert_pol = bool(buf[1] & 0x02)
-        self.alert_mode = bool(buf[1] & 0x01)
+        self._alert_mode = bool(buf[1] & 0x01)
 
     def _set_config(
         self,
@@ -219,21 +219,21 @@ class MCP9808(object):
         """
 
         if hyst_mode is None:
-            hyst_mode = self.hyst_mode
+            hyst_mode = self._hyst_mode
         if shdn is None:
-            shdn = self.shdn
+            shdn = self._shdn
         if crit_lock is None:
-            crit_lock = self.crit_lock
+            crit_lock = self._crit_lock
         if alerts_lock is None:
-            alerts_lock = self.alerts_lock
+            alerts_lock = self._alerts_lock
         if alert_ctrl is None:
-            alert_ctrl = self.alert_ctrl
+            alert_ctrl = self._alert_ctrl
         if alert_sel is None:
-            alert_sel = self.alert_sel
+            alert_sel = self._alert_sel
         if alert_pol is None:
             alert_pol = self.alert_pol
         if alert_mode is None:
-            alert_mode = self.alert_mode
+            alert_mode = self._alert_mode
 
         # Type/value check the parameters
         if hyst_mode not in [HYST_00, HYST_15, HYST_30, HYST_60]:
@@ -288,39 +288,39 @@ class MCP9808(object):
         self._get_config()
         # Check if the configuration was set correctly id debug mode is enabled
         if self._debug:
-            if self.hyst_mode != hyst_mode:
+            if self._hyst_mode != hyst_mode:
                 print(
-                    f"[WARN] Failed to set hyst_mode. Set {hyst_mode} got {self.hyst_mode}",
+                    f"[WARN] Failed to set hyst_mode. Set {hyst_mode} got {self._hyst_mode}",
                 )
-            if self.shdn != shdn:
+            if self._shdn != shdn:
                 print(
-                    f"[WARN] Failed to set shdn. Set {shdn} got {self.shdn}",
+                    f"[WARN] Failed to set shdn. Set {shdn} got {self._shdn}",
                 )
-            if self.crit_lock != crit_lock:
+            if self._crit_lock != crit_lock:
                 print(
-                    f"[WARN] Failed to set crit_lock. Set {crit_lock} got {self.crit_lock}",
+                    f"[WARN] Failed to set crit_lock. Set {crit_lock} got {self._crit_lock}",
                 )
             if self.irq_clear_bit == True:
                 print("[WARN] Something wrong with irq_clear_bit. Should always read False")
-            if self.alerts_lock != alerts_lock:
+            if self._alerts_lock != alerts_lock:
                 print(
-                    f"[WARN] Failed to set alerts_lock. Set {alerts_lock} got {self.alerts_lock}",
+                    f"[WARN] Failed to set alerts_lock. Set {alerts_lock} got {self._alerts_lock}",
                 )
-            if self.alert_ctrl != alert_ctrl:
+            if self._alert_ctrl != alert_ctrl:
                 print(
-                    f"[WARN] Failed to set alert_ctrl. Set {alert_ctrl} got {self.alert_ctrl}.",
+                    f"[WARN] Failed to set alert_ctrl. Set {alert_ctrl} got {self._alert_ctrl}.",
                 )
-            if self.alert_sel != alert_sel:
+            if self._alert_sel != alert_sel:
                 print(
-                    f"[WARN] Failed to set alert_sel. Set {alert_sel} got {self.alert_sel}.",
+                    f"[WARN] Failed to set alert_sel. Set {alert_sel} got {self._alert_sel}.",
                 )
             if self.alert_pol != alert_pol:
                 print(
                     f"[WARN] Failed to set alert_pol. Set {alert_pol} got {self.alert_pol}.",
                 )
-            if self.alert_mode != alert_mode:
+            if self._alert_mode != alert_mode:
                 print(
-                    f"[WARN] Failed to set alert_mode. Set {alert_mode} got {self.alert_mode}.",
+                    f"[WARN] Failed to set alert_mode. Set {alert_mode} got {self._alert_mode}.",
                 )
 
     def _set_alert_limit(self, limit: float | int, register: int) -> None:
@@ -400,21 +400,6 @@ class MCP9808(object):
         """
         self._check_device()
         self._get_config()
-
-    def set_hysteresis_mode(
-        self,
-        hyst_mode: int,
-    ) -> None:
-        """Set the hysteresis mode of the sensor.
-
-        Args:
-            ``hyst_mode`` (int): The hysteresis mode to set.
-                Valid values are HYST_00, HYST_15, HYST_30, HYST_60.
-
-        Returns:
-            ``None``
-        """
-        self._set_config(hyst_mode=hyst_mode)
 
     def shutdown(self) -> None:
         """Put the sensor in low power mode.
@@ -644,3 +629,93 @@ class MCP9808(object):
             check = self._i2c.readfrom_mem(self._addr, self.REG_RES, 1)
             if check != buf:
                 print(f"[WARN] Failed to set resolution. Set {resolution} got {check[0]}")
+
+    @property
+    def hyst_mode(self) -> int:
+        """Get the hysteresis mode.
+
+        Returns:
+            ``int``: The hysteresis mode.
+        """
+        self._get_config()
+        return self._hyst_mode
+
+    @hyst_mode.setter
+    def hyst_mode(self, hyst_mode: int) -> None:
+        """Set the hysteresis mode.
+
+        Args:
+            ``hyst_mode`` (int): The hysteresis mode to set.
+                Valid values are HYST_00, HYST_15, HYST_30, HYST_60.
+        """
+        self._set_config(hyst_mode=hyst_mode)
+
+    @property
+    def shdn(self) -> bool:
+        """Get the shutdown mode.
+
+        Returns:
+            ``bool``: The shutdown mode.
+        """
+        self._get_config()
+        return self._shdn
+
+    @property
+    def crit_lock(self) -> bool:
+        """Get the critical temperature register lock.
+
+        Returns:
+            ``bool``: The critical temperature register lock.
+        """
+        self._get_config()
+        return self._crit_lock
+
+    @property
+    def alerts_lock(self) -> bool:
+        """Get the alerts temperature registers lock.
+
+        Returns:
+            ``bool``: The alerts temperature registers lock.
+        """
+        self._get_config()
+        return self._alerts_lock
+
+    @property
+    def alert(self) -> bool:
+        """Get the alert control.
+
+        Returns:
+            ``bool``: The alert control.
+        """
+        self._get_config()
+        return self._alert
+
+    @property
+    def alert_ctrl(self) -> bool:
+        """Get the alert control.
+
+        Returns:
+            ``bool``: The alert control.
+        """
+        self._get_config()
+        return self._alert_ctrl
+
+    @property
+    def alert_sel(self) -> bool:
+        """Get the alert output select.
+
+        Returns:
+            ``bool``: The alert output select.
+        """
+        self._get_config()
+        return self._alert_sel
+
+    @property
+    def alert_mode(self) -> bool:
+        """Get the alert output mode.
+
+        Returns:
+            ``bool``: The alert output mode.
+        """
+        self._get_config()
+        return self._alert_mode
