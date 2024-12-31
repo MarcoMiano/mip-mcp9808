@@ -48,7 +48,7 @@ t_sensor = MCP9808(i2c)
 # Get temeperature with deafult settings
 temperature: float = t_sensor.get_temperature()
 
-# Variouse settings
+# Various settings
 t_sensor.set_hysteresis_mode(hyst_mode=HYST_15)
 t_sensor.set_resolution(resolution=RES_0_125)
 t_sensor.set_alert_crit_limit(crit_limit=65.0)
@@ -585,6 +585,8 @@ class MCP9808(object):
     def get_alert_triggers(self) -> tuple[bool, bool, bool]:
         """Get the alert triggers.
 
+        Trigger bits are not influenced by the alert output mode (compare or interrupt) or by the
+        alert polarity (active high or active low) or by the alert control (enable or disable).
         Returns:
             ``tuple[bool, bool, bool]``: A tuple containing the alert triggers.
                 The first element is True if the temperature is greater or equal to the critical
