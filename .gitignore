@@ -4,3 +4,6 @@
 # Ignore vscode workspace files
 .vscode
 *.code-workspace
+
+# Ignore conda environment files
+.conda
