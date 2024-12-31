@@ -348,7 +348,7 @@ class MCP9808(object):
             )
         if limit < -128 or limit > 127:
             raise ValueError("Temperature out of range [-128, 127]")
-        if (limit < -20 or limit > 100) and self._debug == True:
+        if (limit < -40 or limit > 125) and self._debug == True:
             print(
                 "[WARN] Temperature outside of operational range, limit won't be ever reached.",
             )
