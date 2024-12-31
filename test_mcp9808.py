@@ -72,21 +72,20 @@ i2c_bus = SoftI2C(scl=Pin(17), sda=Pin(16), freq=400000)
 
 
 class TestMCP9808(unittest.TestCase):
-    def setUp(self) -> None:
-        self.power: Pin = power_pin
-        self.alert: Pin = alert_pin
-        self.sensor_reset()
-        self.i2c: SoftI2C = i2c_bus
-        self.sensor = MCP9808(self.i2c)
+    @classmethod
+    def setUpClass(cls):
+        cls.power: Pin = power_pin
+        cls.alert: Pin = alert_pin
+        cls.i2c: SoftI2C = i2c_bus
+        cls.sensor = MCP9808(cls.i2c)
 
-    def sensor_reset(self) -> None:
+    def setUp(self) -> None:
         self.power.off()
         sleep_ms(20)
         self.power.on()
-        sleep_ms(20)
+        sleep_ms(2000)
 
     def test_powerup_defaults(self) -> None:
-        self.sensor_reset()
         self.assertEqual(self.sensor.hyst_mode, mcp9808.HYST_00)
         self.assertFalse(self.sensor.shdn)
         self.assertFalse(self.sensor.crit_lock)
@@ -124,7 +123,7 @@ class TestMCP9808(unittest.TestCase):
         # Alerts should not be enabled
         self.assertFalse(self.sensor.alert_ctrl)
         # Reset sensor
-        self.sensor_reset()
+        self.setUp()
         # Check if the critical limit register is unlocked
         self.assertFalse(self.sensor.crit_lock)
 
@@ -138,12 +137,11 @@ class TestMCP9808(unittest.TestCase):
         # Alerts should not be enabled
         self.assertTrue(self.sensor.alerts_lock)
         # Reset sensor
-        self.sensor_reset()
+        self.setUp()
         # Check if the alerts limit registers are unlocked
         self.assertFalse(self.sensor.alerts_lock)
 
     def test_alert_control(self) -> None:
-        self.sensor_reset()
         # Get current temperature
         temp: float = self.sensor.get_temperature()
         # Enable alerts
@@ -163,7 +161,6 @@ class TestMCP9808(unittest.TestCase):
         self.assertEqual(self.alert.value(), 1)
 
     def test_comp_lower_alerts(self) -> None:
-        self.sensor_reset()
         # Get current temperature
         temp: float = self.sensor.get_temperature()
         # Check if alert is disabled and in comparator mode
@@ -191,7 +188,6 @@ class TestMCP9808(unittest.TestCase):
         self.assertEqual(self.sensor.get_alert_triggers(), (False, False, False))
 
     def test_comp_upper_alerts(self) -> None:
-        self.sensor_reset()
         # Get current temperature
         temp: float = self.sensor.get_temperature()
         # Check if alert is disabled and in comparator mode
@@ -219,7 +215,6 @@ class TestMCP9808(unittest.TestCase):
         self.assertEqual(self.sensor.get_alert_triggers(), (False, False, False))
 
     def test_comp_crit_alerts(self) -> None:
-        self.sensor_reset()
         # Get current temperature
         temp: float = self.sensor.get_temperature()
         # Check if alert is disabled and in comparator mode
@@ -247,7 +242,6 @@ class TestMCP9808(unittest.TestCase):
         self.assertEqual(self.sensor.get_alert_triggers(), (False, False, False))
 
     def test_irq_lower_alerts(self) -> None:
-        self.sensor_reset()
         # Get current temperature
         temp: float = self.sensor.get_temperature()
         # Check if alert is disabled and in comparator mode
@@ -290,7 +284,6 @@ class TestMCP9808(unittest.TestCase):
         self.assertEqual(self.sensor.get_alert_triggers(), (False, False, False))
 
     def test_irq_upper_alerts(self) -> None:
-        self.sensor_reset()
         # Get current temperature
         temp: float = self.sensor.get_temperature()
         # Check if alert is disabled and in comparator mode
@@ -333,7 +326,6 @@ class TestMCP9808(unittest.TestCase):
         self.assertEqual(self.sensor.get_alert_triggers(), (False, False, False))
 
     def test_irq_crit_alerts(self) -> None:
-        self.sensor_reset()
         # Get current temperature
         temp: float = self.sensor.get_temperature()
         # Check if alert is disabled and in comparator mode
