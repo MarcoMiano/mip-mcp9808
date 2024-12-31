@@ -40,7 +40,7 @@ for register access) and a debug mode to assist with development.
 Example usage:
 
 from mcp9808 import MCP9808, HYST_15, RES_0_125
-from machine import SoftI2C
+from machine import SoftI2C, Pin
 
 i2c = SoftI2C(scl=Pin(17), sda=Pin(16), freq=400000)
 t_sensor = MCP9808(i2c)
@@ -416,16 +416,21 @@ class MCP9808(object):
         """
         self._set_config(hyst_mode=hyst_mode)
 
-    def shutdown(self, wake=False) -> None:
-        """Shutdown or wake the sensor.
-
-        Args:
-            ``wake`` (bool, optional): Wake the sensor if True. Defaults to False.
+    def shutdown(self) -> None:
+        """Put the sensor in low power mode.
 
         Returns:
             ``None``
         """
-        self._set_config(shdn=not wake)
+        self._set_config(shdn=True)
+
+    def wake(self) -> None:
+        """Wake the sensor from low power mode.
+
+        Returns:
+            ``None``
+        """
+        self._set_config(shdn=False)
 
     def lock_crit_limit(self) -> None:
         """Locks the critical temperature limit.
