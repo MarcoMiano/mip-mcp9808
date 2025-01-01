@@ -30,7 +30,7 @@ THE MCP9808 IS A COMPLEX SENSOR WITH MANY FEATURES. IS IT ADVISABLE TO READ THE 
 DO NOT ACCESS REGISTERS WITH ADDRESSES HIGHER THAN 0x08 AS THEY CONTAIN CALIBRATION CODES.
 DOING SO MAY IRREPARABLY DAMAGE THE SENSOR.
 
-This test suite is designed to check the correct operation of the MCP9808 sensor driver and the 
+This test suite is designed to check the correct operation of the MCP9808 sensor driver and the
 sensor itself. It is advisable to run this test suite if anything is changed in the driver code,
 or if the sensor is not behaving right.
 This test suite is written and tested on a Raspberry Pi Pico W Board with MicroPython v1.24.1.
@@ -38,15 +38,15 @@ This test suite is written and tested on a Raspberry Pi Pico W Board with MicroP
 
 
 Pin connections:
-    - POWER: pin15 
-             The sensor is powered from a GPIO pin to be able to power cycle the sensor during the 
+    - POWER: pin15
+             The sensor is powered from a GPIO pin to be able to power cycle the sensor during the
              tests.
-             CHECK THAT YOUR GPIO PIN CAN SUPPLY ENOUGH CURRENT AND VOLTAGE TO POWER THE SENSOR. 
+             CHECK THAT YOUR GPIO PIN CAN SUPPLY ENOUGH CURRENT AND VOLTAGE TO POWER THE SENSOR.
              (2.7V-5.5V AT 0.4mA)
     - SDA:   pin16
     - SCL:   pin17
     - ALERT: pin18
-             The sensor alert pin is connected to a GPIO pin to check if the sensor is triggering 
+             The sensor alert pin is connected to a GPIO pin to check if the sensor is triggering
              alerts. The pin is pulled to VCC via the board internal pull-up resistor.
              The pin is active low. Wire an external pull-up resistor to VCC if needed.
 

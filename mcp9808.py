@@ -614,7 +614,7 @@ class MCP9808(object):
             ``None``
         """
         # Check if resolution is a compatible value
-        if not resolution in [RES_0_5, RES_0_25, RES_0_125, RES_0_0625]:
+        if resolution not in [RES_0_5, RES_0_25, RES_0_125, RES_0_0625]:
             raise ValueError(
                 f"Invalid resolution: {resolution}. Value should be between 0 and 3 inclusive.",
             )
