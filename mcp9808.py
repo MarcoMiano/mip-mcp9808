@@ -242,36 +242,38 @@ class MCP9808(object):
 
         # Type/value check the parameters
         if hyst_mode not in [HYST_00, HYST_15, HYST_30, HYST_60]:
-            raise ValueError(f"hyst_mode: {hyst_mode}. Value should be between 0 and 3 inclusive.")
-        if shdn is not bool:
+            raise ValueError(
+                f"hyst_mode: {hyst_mode}. Value should be between 0 and 3 inclusive."
+            )
+        if shdn.__class__ is not bool:
             raise TypeError(
                 f"shdn: {shdn} {shdn.__class__}. Expecting a bool.",
             )
-        if crit_lock is not bool:
+        if crit_lock.__class__ is not bool:
             raise TypeError(
                 f"crit_lock: {crit_lock} {crit_lock.__class__}. Expecting a bool.",
             )
-        if alerts_lock is not bool:
+        if alerts_lock.__class__ is not bool:
             raise TypeError(
                 f"alerts_lock: {alerts_lock} {alerts_lock.__class__}. Expecting a bool.",
             )
-        if irq_clear_bit is not bool:
+        if irq_clear_bit.__class__ is not bool:
             raise TypeError(
                 f"irq_clear_bit: {irq_clear_bit} {irq_clear_bit.__class__}. Expecting a bool.",
             )
-        if alert_ctrl is not bool:
+        if alert_ctrl.__class__ is not bool:
             raise TypeError(
                 f"alert_ctrl: {alert_ctrl} {alert_ctrl.__class__}. Expecting a bool.",
             )
-        if alert_sel is not bool:
+        if alert_sel.__class__ is not bool:
             raise TypeError(
                 f"alert_sel: {alert_sel} {alert_sel.__class__}. Expecting a bool.",
             )
-        if alert_pol is not bool:
+        if alert_pol.__class__ is not bool:
             raise TypeError(
                 f"alert_pol: {alert_pol} {alert_pol.__class__}. Expecting a bool.",
             )
-        if alert_mode is not bool:
+        if alert_mode.__class__ is not bool:
             raise TypeError(
                 f"alert_mode: {alert_mode} {alert_mode.__class__}. Expecting a bool.",
             )
@@ -306,7 +308,9 @@ class MCP9808(object):
                     f"[WARN] Failed to set crit_lock. Set {crit_lock} got {self._crit_lock}",
                 )
             if self.irq_clear_bit:
-                print("[WARN] Something wrong with irq_clear_bit. Should always read False")
+                print(
+                    "[WARN] Something wrong with irq_clear_bit. Should always read False"
+                )
             if self._alerts_lock != alerts_lock:
                 print(
                     f"[WARN] Failed to set alerts_lock. Set {alerts_lock} got {self._alerts_lock}",
@@ -346,7 +350,7 @@ class MCP9808(object):
             ``None``
         """
 
-        if limit.__class__ not in [float]:
+        if limit.__class__ not in [float, int]:
             raise TypeError(
                 f"limit: {limit} {limit.__class__}. Expecting float|int.",
             )
@@ -622,7 +626,9 @@ class MCP9808(object):
         if self._debug:
             check = self._i2c.readfrom_mem(self._addr, self.REG_RES, 1)
             if check != buf:
-                print(f"[WARN] Failed to set resolution. Set {resolution} got {check[0]}")
+                print(
+                    f"[WARN] Failed to set resolution. Set {resolution} got {check[0]}"
+                )
 
     @property
     def hyst_mode(self) -> int:
