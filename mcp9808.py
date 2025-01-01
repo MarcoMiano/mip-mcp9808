@@ -30,9 +30,9 @@ THE MCP9808 IS A COMPLEX SENSOR WITH MANY FEATURES. IS IT ADVISABLE TO READ THE 
 DO NOT ACCESS REGISTERS WITH ADDRESSES HIGHER THAN 0x08 AS THEY CONTAIN CALIBRATION CODES.
 DOING SO MAY IRREPARABLY DAMAGE THE SENSOR.
 
-This driver is a comprehensive implementation of the MCP9808 sensor's features. It is designed 
+This driver is a comprehensive implementation of the MCP9808 sensor's features. It is designed
 to be easy to use and offers a high level of abstraction from the sensor's registers.
-The driver includes built-in error checking (such as type validation and bounds checking 
+The driver includes built-in error checking (such as type validation and bounds checking
 for register access) and a debug mode to assist with development.
 
 
@@ -58,6 +58,10 @@ t_sensor.enable_alert()
 
 # Enable debug mode to get warnings
 t_sensor._debug = True
+
+
+# For more information, see the README file at
+https://github.com/MarcoMiano/mip-mcp9808
 """
 
 from machine import SoftI2C, I2C
@@ -152,7 +156,7 @@ class MCP9808(object):
         self._dev_id: bytes = self._i2c.readfrom_mem(self._addr, self.REG_DEV, 2)
         if self._dev_id[0] != 4:
             raise Exception(f"Invalid device ID {self._dev_id[0]}")
-        if self._dev_id[1] != 0 and self._debug == True:
+        if self._dev_id[1] != 0 and self._debug:
             print(
                 f"[WARN] Module written for HW revision 0 but got {self._dev_id[1]}.",
             )
@@ -238,7 +242,9 @@ class MCP9808(object):
 
         # Type/value check the parameters
         if hyst_mode not in [HYST_00, HYST_15, HYST_30, HYST_60]:
-            raise ValueError(f"hyst_mode: {hyst_mode}. Value should be between 0 and 3 inclusive.")
+            raise ValueError(
+                f"hyst_mode: {hyst_mode}. Value should be between 0 and 3 inclusive."
+            )
         if shdn.__class__ != bool:
             raise TypeError(
                 f"shdn: {shdn} {shdn.__class__}. Expecting a bool.",
@@ -301,8 +307,10 @@ class MCP9808(object):
                 print(
                     f"[WARN] Failed to set crit_lock. Set {crit_lock} got {self._crit_lock}",
                 )
-            if self.irq_clear_bit == True:
-                print("[WARN] Something wrong with irq_clear_bit. Should always read False")
+            if self.irq_clear_bit:
+                print(
+                    "[WARN] Something wrong with irq_clear_bit. Should always read False"
+                )
             if self._alerts_lock != alerts_lock:
                 print(
                     f"[WARN] Failed to set alerts_lock. Set {alerts_lock} got {self._alerts_lock}",
@@ -324,7 +332,7 @@ class MCP9808(object):
                     f"[WARN] Failed to set alert_mode. Set {alert_mode} got {self._alert_mode}.",
                 )
 
-    def _set_alert_limit(self, limit: float | int, register: int) -> None:
+    def _set_alert_limit(self, limit: float, register: int) -> None:
         """Private method to set the alert limit register.
 
         Inteded to be used by the set_alert_XXXXX_limit wrapper methods.
@@ -342,13 +350,13 @@ class MCP9808(object):
             ``None``
         """
 
-        if not limit.__class__ in [float, int]:
+        if limit.__class__ not in [float]:
             raise TypeError(
                 f"limit: {limit} {limit.__class__}. Expecting float|int.",
             )
         if limit < -128 or limit > 127:
             raise ValueError("Temperature out of range [-128, 127]")
-        if (limit < -40 or limit > 125) and self._debug == True:
+        if (limit < -40 or limit > 125) and self._debug:
             print(
                 "[WARN] Temperature outside of operational range, limit won't be ever reached.",
             )
@@ -497,7 +505,7 @@ class MCP9808(object):
         """
         self._set_config(alert_mode=irq)
 
-    def set_alert_upper_limit(self, upper_limit: float | int) -> None:
+    def set_alert_upper_limit(self, upper_limit: float) -> None:
         """Set the alert upper limit.
 
         Args:
@@ -514,7 +522,7 @@ class MCP9808(object):
         """
         self._set_alert_limit(upper_limit, self.REG_ATU)
 
-    def set_alert_lower_limit(self, lower_limit: float | int) -> None:
+    def set_alert_lower_limit(self, lower_limit: float) -> None:
         """Set the alert lower limit.
 
         Args:
@@ -530,7 +538,7 @@ class MCP9808(object):
         """
         self._set_alert_limit(lower_limit, self.REG_ATL)
 
-    def set_alert_crit_limit(self, crit_limit: float | int) -> None:
+    def set_alert_crit_limit(self, crit_limit: float) -> None:
         """Set the alert critical limit.
 
         Args:
@@ -618,7 +626,9 @@ class MCP9808(object):
         if self._debug:
             check = self._i2c.readfrom_mem(self._addr, self.REG_RES, 1)
             if check != buf:
-                print(f"[WARN] Failed to set resolution. Set {resolution} got {check[0]}")
+                print(
+                    f"[WARN] Failed to set resolution. Set {resolution} got {check[0]}"
+                )
 
     @property
     def hyst_mode(self) -> int:
