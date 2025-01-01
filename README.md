@@ -107,8 +107,9 @@ It's not possible to put the sensor in `low power` mode when either the `crit_lo
 The methods don't accept any argument and return `None`
 
 ### `lock_crit_limit()` and `lock_alerts_limit()` methods
-The `lock_crit_limit()` will lock the T<sub>CRIT</sub> register (0x4)
-The `lock_alert_limit()` will lock the T<sub>UPPER</sub> and T<sub>LOWER</sub> registers (0x2 and 0x3)
+The `lock_crit_limit()` will lock the T<sub>CRIT</sub> register (0x4).
+
+The `lock_alert_limit()` will lock the T<sub>UPPER</sub> and T<sub>LOWER</sub> registers (0x2 and 0x3).
 ```python
 # Lock the Tcrit register
 t_sensor.lock_crit_limit()
@@ -163,6 +164,7 @@ while True:
 
 ### `enable_alert()` and `disable_alert()` methods
 The `enable_alert()` method will enable the alert output.
+
 The `disable_alert()` method will disable the alert output.
 ```python
 # Enable alert output
@@ -172,12 +174,13 @@ t_sensor.enable_alert()
 t_sensor.disable_alert()
 ```
 It's not possible to enable or disable the alert ouput if either `crit_lock` or `alerts_lock` are set.
+
 It's possible to enable or disable the alert output when in `low power` mode but the alert output will not assert or deassert until the sensor is back in `continuous` mode.
+
 The methods don't accept any argument and return `None`
 
 ### `set_alert_threshold()` method
 The `set_alert_threshold()` method set which thresholds will trigger the alert output, T<sub>CRIT</sub> or T<sub>CRIT</sub>, T<sub>UPPER</sub>, T<sub>LOWER</sub>.
-The power-up default is 
 ```python
 # Set the alert output to trigger only on Tcrit
 t_sensor.set_alert_threshold(only_crit=True)
@@ -189,7 +192,8 @@ The method accept one `bool` argument `only_crit`:
 - if `True` alert output will only trigger on T<sub>CRIT</sub>
 - if `False` alert output will trigger on T<sub>CRIT</sub>, T<sub>UPPER</sub>, T<sub>LOWER</sub>
 
-If `alerts_lock` is set is not possible to select which threshlods can trigger the alert output.If attempted a warning is issued if in `debug` mode.
+If `alerts_lock` is set is not possible to select which threshlods can trigger the alert output. If attempted a warning is issued if in `debug` mode.
+
 The method return `None`.
 
 ### `set_alert_polarity()` method
@@ -207,7 +211,9 @@ The method accept one `bool` argument `active_high`:
 - if `False` alert output will be set to active low (an ongoing alert will be a low signal)
 
 If either `crit_lock` or `alerts_lock` are set is not possible to change the polarity of the alert output. If attempted a warning is issued if in `debug` mode.
+
 It's possible to change polarity of the alert ouput when the sensor is in `low power` mode but the alert output will not assert or deassert until the sensor is back in `continuous` mode.
+
 The method return `None`
 
 ### `set_alert_mode()` method
@@ -224,7 +230,9 @@ The method accept one `bool` argument `irq`:
 - if `False` alert output mode will be set to `comparator`
 
 If either `crit_lock` or `alerts_lock` are set is not possible to change the mode of the alert output. If attempted a warning is issued if in `debug` mode.
+
 It's possible to change mode of the alert ouput when the sensor is in `low power` mode but the alert output will not assert or deassert until the sensor is back in `continuous` mode.
+
 The method return `None`
 
 ### `set_upper_limit()`, `set_lower_limit()` and `set_crit_limit()` methods
@@ -235,13 +243,15 @@ t_sensor.set_upper_limit(43.5)
 ```
 The method accept one `float|int` argument expressed in degree Celsius. The limit will be rounded to the nearest 0.25°C.
 
-The methods type check the argument and will raise a `TypeError` exception if the type of the argument is not `float` or `int.
+The methods type check the argument and will raise a `TypeError` exception if the type of the argument is not `float` or `int`.
 The methods check if the argument is out of the range [-128°C, 127°C] and will raise a `ValueError`.
 
 In debug mode a warning is issued if the argument is outside of the operational range of the sensor [-40°C, 125°C].
 
 It's not possible to change the upper and lower limit register if `alerts_lock` is set. If attempted a warning is issued if in `debug` mode.
+
 It's not possible to change the crit limit register if `crit_lock` is set. If attempted a warning is issued if in `debug` mode.
+
 The methods return `None`
 
 ### `set_resolution()` method
@@ -322,4 +332,3 @@ t_sensor.set_alert_polarity(active_high=true)
 ```console
 [WARN] Failed to set alert_pol. Set True got False.
 ```
-
