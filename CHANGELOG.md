@@ -5,6 +5,13 @@
 
 This project follows [Semantic Versioning 2.0.0](https://semver.org/spec/v2.0.0.html).
 
+## Unreleased
+
+### Documentation and maintenance
+
+- Replace the redistributed Microchip datasheet with a link to the official copy.
+- Add a reproducible on-device performance benchmark and recorded firmware baselines.
+
 ## 2.0.0 - 2026-08-21
 
 ### Breaking changes

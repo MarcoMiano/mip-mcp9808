@@ -11,7 +11,7 @@ ACCESSING THEM IS UNSUPPORTED AND MAY CAUSE UNSPECIFIED SENSOR BEHAVIOUR.
 This test suite is designed to check the correct operation of the MCP9808 sensor driver and the
 sensor itself. It is advisable to run this test suite if anything is changed in the driver code,
 or if the sensor is not behaving right.
-This test suite is written and tested on a Raspberry Pi Pico W Board with MicroPython v1.24.1.
+This test suite is written and tested on a Raspberry Pi Pico W Board with MicroPython v1.28.0.
 
 
 

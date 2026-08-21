@@ -196,6 +196,7 @@ def irq_handler(pin):
     global irq_pending
     irq_pending = True
 
+
 # Create the flag before registering the interrupt
 irq_pending = False
 
@@ -454,8 +455,18 @@ Run the physical Pico W and MCP9808 suite from the repository root:
 mpremote connect /dev/ttyACM0 mount . run test_mcp9808.py
 ```
 
+Run the allocation and timing benchmark on the same physical setup:
+
+```console
+mpremote connect /dev/ttyACM0 mount . run benchmark_mcp9808.py
+```
+
+The benchmark power-cycles the sensor through GPIO15, then compares the original allocating float path with the v2 buffered float and integer paths over five rounds. See [`BENCHMARKS.md`](BENCHMARKS.md) for the recorded baselines and interpretation guidance.
+
+## Datasheet
+
+The structured [`MCP9808 datasheet guide`](docs/MCP9808-datasheet-guide.md) summarizes the register and protocol details relevant to this driver. Use Microchip's [official MCP9808 datasheet](https://www.microchip.com/content/dam/mchp/documents/OTH/ProductDocuments/DataSheets/MCP9808-0.5C-Maximum-Accuracy-Digital-Temperature-Sensor-Data-Sheet-DS20005095B.pdf) as the authoritative source for electrical limits, timing, packages, and ordering information.
+
 ## License
 
 The project-authored code and documentation are licensed under the MIT License; each source file uses a concise SPDX identifier and the complete license text is kept in [`LICENSE`](LICENSE).
-
-The bundled Microchip datasheet is third-party documentation, is not covered by the project MIT License, and remains subject to Microchip's terms; see [`THIRD_PARTY_NOTICES.md`](THIRD_PARTY_NOTICES.md).

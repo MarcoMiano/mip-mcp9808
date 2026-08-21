@@ -3,7 +3,7 @@
 
 # MCP9808 datasheet guide
 
-This is a structured reading aid for Microchip document DS20005095B, `MCP9808-0.5C-Maximum-Accuracy-Digital-Temperature-Sensor-Data-Sheet-DS20005095B.pdf`. It emphasizes the information needed to implement or review an MCP9808 driver. The PDF remains the authoritative source, especially for electrical limits, timing diagrams, package dimensions, and ordering information.
+This is a structured reading aid for Microchip document DS20005095B, the [official MCP9808 datasheet](https://www.microchip.com/content/dam/mchp/documents/OTH/ProductDocuments/DataSheets/MCP9808-0.5C-Maximum-Accuracy-Digital-Temperature-Sensor-Data-Sheet-DS20005095B.pdf). It emphasizes the information needed to implement or review an MCP9808 driver. The official PDF remains the authoritative source, especially for electrical limits, timing diagrams, package dimensions, and ordering information.
 
 Page references below are the page numbers printed in the datasheet.
 
