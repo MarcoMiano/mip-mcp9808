@@ -1,39 +1,19 @@
-"""MIT License
+# SPDX-FileCopyrightText: 2024-2026 Marco Miano
+# SPDX-License-Identifier: MIT
 
-Copyright (c) 2024 Marco Miano
+"""Microchip MCP9808 driver for MicroPython
 
-Permission is hereby granted, free of charge, to any person obtaining a copy
-of this software and associated documentation files (the "Software"), to deal
-in the Software without restriction, including without limitation the rights
-to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
-copies of the Software, and to permit persons to whom the Software is
-furnished to do so, subject to the following conditions:
+THE MCP9808 IS A COMPLEX SENSOR WITH MANY FEATURES. IT IS ADVISABLE TO READ THE DATASHEET.
 
-The above copyright notice and this permission notice shall be included in all
-copies or substantial portions of the Software.
-
-THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
-IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
-FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
-AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
-LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
-OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
-SOFTWARE.
-
-
-
-
-Microchip MCP9808 driver for MicroPython
-
-THE MCP9808 IS A COMPLEX SENSOR WITH MANY FEATURES. IS IT ADVISABLE TO READ THE DATASHEET.
-
-DO NOT ACCESS REGISTERS WITH ADDRESSES HIGHER THAN 0x08 AS THEY CONTAIN CALIBRATION CODES.
-DOING SO MAY IRREPARABLY DAMAGE THE SENSOR.
+DO NOT ACCESS RESERVED REGISTERS WITH ADDRESSES HIGHER THAN 0x08.
+ACCESSING THEM IS UNSUPPORTED AND MAY CAUSE UNSPECIFIED SENSOR BEHAVIOUR.
 
 This driver is a comprehensive implementation of the MCP9808 sensor's features. It is designed
 to be easy to use and offers a high level of abstraction from the sensor's registers.
 The driver includes built-in error checking (such as type validation and bounds checking
 for register access) and a debug mode to assist with development.
+The I2C object must implement readfrom_mem_into() and writeto_mem(). The driver reuses internal
+buffers, so one sensor instance is not reentrant across normal and interrupt contexts.
 
 
 
@@ -45,26 +25,26 @@ from machine import SoftI2C, Pin
 i2c = SoftI2C(scl=Pin(17), sda=Pin(16), freq=400000)
 t_sensor = MCP9808(i2c)
 
-# Get temeperature with deafult settings
+# Get temperature with default settings
 temperature: float = t_sensor.get_temperature()
+temperature_x16: int = t_sensor.get_temperature_x16()
 
 # Various settings
-t_sensor.set_hysteresis_mode(hyst_mode=HYST_15)
+t_sensor.hyst_mode = HYST_15
 t_sensor.set_resolution(resolution=RES_0_125)
 t_sensor.set_alert_crit_limit(crit_limit=65.0)
 t_sensor.set_alert_upper_limit(upper_limit=50.0)
 t_sensor.set_alert_lower_limit(lower_limit=-10.0)
+t_sensor.set_alert_lower_limit_x4(lower_limit_x4=-40)
 t_sensor.enable_alert()
 
 # Enable debug mode to get warnings
-t_sensor._debug = True
+t_sensor = MCP9808(i2c, debug=True)
 
 
 # For more information, see the README file at
 https://github.com/MarcoMiano/mip-mcp9808
 """
-
-from machine import SoftI2C, I2C
 
 # Handy Constants
 HYST_00 = 0b00  # Hysteresis 0°C (power-up default)
@@ -78,7 +58,7 @@ RES_0_125 = 0b10  # Resolution 0.125°C
 RES_0_0625 = 0b11  # Resolution 0.0625°C (power-up default)
 
 
-class MCP9808(object):
+class MCP9808:
     """A class to interface with the Microchip MCP9808 temperature sensor over I2C.
 
     Attributes:
@@ -95,7 +75,7 @@ class MCP9808(object):
 
     BASE_ADDR = 0x18
     #######################################################
-    # DON'T ACCESS REGISTER WITH ADDRESS HIGHER THAN 0X08 #
+    # DON'T ACCESS REGISTERS WITH ADDRESSES HIGHER THAN 0X08 #
     #######################################################
     REG_CFG = 0x01  # Config register
     REG_ATU = 0x02  # Alert Temperature Upper boundary trip register
@@ -108,61 +88,97 @@ class MCP9808(object):
 
     def __init__(
         self,
-        i2c: SoftI2C | I2C,
+        i2c,
         addr: int | None = None,
         A0: bool = False,
         A1: bool = False,
         A2: bool = False,
         debug: bool = False,
+        verify: bool = True,
     ) -> None:
         """Initialize the sensor object instance.
 
         Args:
-            ``i2c`` (SoftI2C | I2C): The I2C bus instance to use for communication.
+            ``i2c``: An I2C-compatible object implementing readfrom_mem_into() and writeto_mem().
             ``addr`` (int | None, optional): The I2C address of the sensor. If not provided,
                 the address will be calculated based on A0, A1, and A2. Defaults to None.
             ``A0`` (bool, optional): The state of address pin A0. Defaults to False.
             ``A1`` (bool, optional): The state of address pin A1. Defaults to False.
             ``A2`` (bool, optional): The state of address pin A2. Defaults to False.
             ``debug`` (bool, optional): Enable or disable debug mode. Defaults to False.
+            ``verify`` (bool, optional): Verify the manufacturer and device IDs during
+                construction. Defaults to True.
         Returns:
             ``None``
+        Raises:
+            ``TypeError``: If addr is not an int or None.
+            ``ValueError``: If addr is outside the 7-bit I2C address range.
+            ``TypeError``: If A0, A1, A2, debug, or verify is not a bool.
         """
 
-        self._i2c: SoftI2C | I2C = i2c
+        if addr is not None and addr.__class__ is not int:
+            raise TypeError(
+                f"addr: {addr} {addr.__class__}. Expecting an int or None.",
+            )
+        if addr is not None and (addr < 0 or addr > 0x7F):
+            raise ValueError(f"addr: {addr}. Expecting a 7-bit I2C address.")
+        if A0.__class__ is not bool:
+            raise TypeError(f"A0: {A0} {A0.__class__}. Expecting a bool.")
+        if A1.__class__ is not bool:
+            raise TypeError(f"A1: {A1} {A1.__class__}. Expecting a bool.")
+        if A2.__class__ is not bool:
+            raise TypeError(f"A2: {A2} {A2.__class__}. Expecting a bool.")
+        if debug.__class__ is not bool:
+            raise TypeError(
+                f"debug: {debug} {debug.__class__}. Expecting a bool.",
+            )
+        if verify.__class__ is not bool:
+            raise TypeError(
+                f"verify: {verify} {verify.__class__}. Expecting a bool.",
+            )
+
+        self._i2c = i2c
         self._debug: bool = debug
-        if addr:
+        # Reuse fixed buffers so register reads do not allocate a new bytes object
+        self._buf = bytearray(2)
+        self._buf1 = bytearray(1)
+        if addr is not None:
             self._addr = addr
         else:
             self._addr: int = self.BASE_ADDR | (A2 << 2) | (A1 << 1) | A0
-        self._check_device()
-        self._get_config()
+        if verify:
+            self.verify()
+        self.refresh()
 
-    def _check_device(self) -> None:
-        """Checks the device's manufacturer ID and device ID to ensure it is the correct device.
+    def verify(self) -> None:
+        """Check the manufacturer and device IDs to verify the connected sensor.
 
         Raises:
-            ``Exception``: If the manufacturer ID does not match the expected value.
-            ``Exception``: If the device ID does not match the expected value.
+            ``RuntimeError``: If the manufacturer ID does not match the expected value.
+            ``RuntimeError``: If the device ID does not match the expected value.
         Warns:
             If the hardware revision does not match the expected value and debug mode is enabled.
         Returns:
             ``None``
         """
 
-        self._mfr_id: bytes = self._i2c.readfrom_mem(self._addr, self.REG_MFR, 2)
-        if self._mfr_id != b"\x00\x54":
-            raise Exception(f"Invalid manufacturer ID {self._mfr_id}")
-        self._dev_id: bytes = self._i2c.readfrom_mem(self._addr, self.REG_DEV, 2)
-        if self._dev_id[0] != 4:
-            raise Exception(f"Invalid device ID {self._dev_id[0]}")
-        if self._dev_id[1] != 0 and self._debug:
+        # Read and check the manufacturer ID
+        self._i2c.readfrom_mem_into(self._addr, self.REG_MFR, self._buf)
+        if self._buf[0] != 0 or self._buf[1] != 0x54:
+            raise RuntimeError(
+                f"Invalid manufacturer ID {self._buf[0]:02x}{self._buf[1]:02x}",
+            )
+        # Read and check the device ID and hardware revision
+        self._i2c.readfrom_mem_into(self._addr, self.REG_DEV, self._buf)
+        if self._buf[0] != 4:
+            raise RuntimeError(f"Invalid device ID {self._buf[0]}")
+        if self._buf[1] != 0 and self._debug:
             print(
-                f"[WARN] Module written for HW revision 0 but got {self._dev_id[1]}.",
+                f"[WARN] Module written for HW revision 0 but got {self._buf[1]}.",
             )
 
-    def _get_config(self) -> None:
-        """Private method to read the configuration register from the sensor.
+    def refresh(self) -> None:
+        """Read the configuration register and refresh the cached properties.
 
         This method reads 2 bytes from the configuration register of the sensor.
         It then parses the bytes to update the following instance attributes:
@@ -180,17 +196,17 @@ class MCP9808(object):
             ``None``
         """
 
-        buf: bytes = self._i2c.readfrom_mem(self._addr, self.REG_CFG, 2)
-        self._hyst_mode: int = (buf[0] >> 1) & 0x03
-        self._shdn = bool(buf[0] & 0x01)
-        self._crit_lock = bool(buf[1] & 0x80)
-        self._alerts_lock = bool(buf[1] & 0x40)
-        self.irq_clear_bit = bool(buf[1] & 0x20)
-        self._alert = bool(buf[1] & 0x10)
-        self._alert_ctrl = bool(buf[1] & 0x08)
-        self._alert_sel = bool(buf[1] & 0x04)
-        self.alert_pol = bool(buf[1] & 0x02)
-        self._alert_mode = bool(buf[1] & 0x01)
+        self._i2c.readfrom_mem_into(self._addr, self.REG_CFG, self._buf)
+        self._hyst_mode: int = (self._buf[0] >> 1) & 0x03
+        self._shdn = bool(self._buf[0] & 0x01)
+        self._crit_lock = bool(self._buf[1] & 0x80)
+        self._alerts_lock = bool(self._buf[1] & 0x40)
+        self._irq_clear_bit = bool(self._buf[1] & 0x20)
+        self._alert = bool(self._buf[1] & 0x10)
+        self._alert_ctrl = bool(self._buf[1] & 0x08)
+        self._alert_sel = bool(self._buf[1] & 0x04)
+        self._alert_pol = bool(self._buf[1] & 0x02)
+        self._alert_mode = bool(self._buf[1] & 0x01)
 
     def _set_config(
         self,
@@ -208,10 +224,10 @@ class MCP9808(object):
 
         Parameters:
             ``hyst_mode`` (int | None): Hysteresis mode. Valid values are HYST_00, HYST_15, HYST_30, HYST_60.
-            ``shdn (bool`` | None): Shutdown mode.
+            ``shdn`` (bool | None): Shutdown mode.
             ``crit_lock`` (bool | None): Critical temperature register lock.
             ``alerts_lock`` (bool | None): Alerts temperature registers lock.
-            ``irq_clear``_bit (bool): Interrupt clear bit.
+            ``irq_clear_bit`` (bool): Interrupt clear bit.
             ``alert_ctrl`` (bool | None): Alert output control.
             ``alert_sel`` (bool | None): Alert output select.
             ``alert_pol`` (bool | None): Alert output polarity.
@@ -236,11 +252,15 @@ class MCP9808(object):
         if alert_sel is None:
             alert_sel = self._alert_sel
         if alert_pol is None:
-            alert_pol = self.alert_pol
+            alert_pol = self._alert_pol
         if alert_mode is None:
             alert_mode = self._alert_mode
 
         # Type/value check the parameters
+        if hyst_mode.__class__ is not int:
+            raise TypeError(
+                f"hyst_mode: {hyst_mode} {hyst_mode.__class__}. Expecting an int.",
+            )
         if hyst_mode not in [HYST_00, HYST_15, HYST_30, HYST_60]:
             raise ValueError(
                 f"hyst_mode: {hyst_mode}. Value should be between 0 and 3 inclusive."
@@ -279,9 +299,8 @@ class MCP9808(object):
             )
 
         # Build the send buffer
-        buf = bytearray(b"\x00\x00")
-        buf[0] = (hyst_mode << 1) | shdn
-        buf[1] = (
+        self._buf[0] = (hyst_mode << 1) | shdn
+        self._buf[1] = (
             (crit_lock << 7)
             | (alerts_lock << 6)
             | (irq_clear_bit << 5)
@@ -291,9 +310,9 @@ class MCP9808(object):
             | alert_mode
         )
         # Write the buffer to the sensor
-        self._i2c.writeto_mem(self._addr, self.REG_CFG, buf)
-        self._get_config()
-        # Check if the configuration was set correctly id debug mode is enabled
+        self._i2c.writeto_mem(self._addr, self.REG_CFG, self._buf)
+        self.refresh()
+        # Check if the configuration was set correctly if debug mode is enabled
         if self._debug:
             if self._hyst_mode != hyst_mode:
                 print(
@@ -307,7 +326,7 @@ class MCP9808(object):
                 print(
                     f"[WARN] Failed to set crit_lock. Set {crit_lock} got {self._crit_lock}",
                 )
-            if self.irq_clear_bit:
+            if self._irq_clear_bit:
                 print(
                     "[WARN] Something wrong with irq_clear_bit. Should always read False"
                 )
@@ -323,9 +342,9 @@ class MCP9808(object):
                 print(
                     f"[WARN] Failed to set alert_sel. Set {alert_sel} got {self._alert_sel}.",
                 )
-            if self.alert_pol != alert_pol:
+            if self._alert_pol != alert_pol:
                 print(
-                    f"[WARN] Failed to set alert_pol. Set {alert_pol} got {self.alert_pol}.",
+                    f"[WARN] Failed to set alert_pol. Set {alert_pol} got {self._alert_pol}.",
                 )
             if self._alert_mode != alert_mode:
                 print(
@@ -335,13 +354,14 @@ class MCP9808(object):
     def _set_alert_limit(self, limit: float, register: int) -> None:
         """Private method to set the alert limit register.
 
-        Inteded to be used by the set_alert_XXXXX_limit wrapper methods.
+        Intended to be used by the set_alert_XXXXX_limit wrapper methods.
         Args:
-            ``limit`` (float | int): The temperature limit to set. Must be between -128 and 127.
+            ``limit`` (float | int): The temperature limit to set. Must be between -128 and 127.75.
+                It will be rounded to the nearest 0.25°C using round-to-even for halfway values.
             ``register`` (int): The register address to write the limit to.
         Raises:
             ``TypeError``: If the limit is not a float or int.
-            ``ValueError``: If the limit is out of the range [-128, 127].
+            ``ValueError``: If the limit is out of the range [-128, 127.75].
             ``ValueError``: If the register address is not valid.
         Debug:
             - Issue a warning if the threshold is outside of the operational range.
@@ -354,49 +374,55 @@ class MCP9808(object):
             raise TypeError(
                 f"limit: {limit} {limit.__class__}. Expecting float|int.",
             )
-        if limit < -128 or limit > 127:
-            raise ValueError("Temperature out of range [-128, 127]")
-        if (limit < -40 or limit > 125) and self._debug:
+        if limit < -128 or limit > 127.75:
+            raise ValueError("Temperature out of range [-128, 127.75]")
+        # Convert the limit to signed quarter-degree units, rounding halfway values to even
+        quarter_degrees: int = round(limit * 4)
+        self._set_alert_limit_x4(quarter_degrees, register)
+
+    def _set_alert_limit_x4(self, limit_x4: int, register: int) -> None:
+        """Private method to set an alert limit from signed quarter-degree units.
+
+        Args:
+            ``limit_x4`` (int): The temperature limit multiplied by four.
+            ``register`` (int): The register address to write the limit to.
+        Raises:
+            ``TypeError``: If limit_x4 is not an int.
+            ``ValueError``: If limit_x4 is out of the range [-512, 511].
+            ``ValueError``: If the register address is not valid.
+        Returns:
+            ``None``
+        """
+
+        if limit_x4.__class__ is not int:
+            raise TypeError(
+                f"limit_x4: {limit_x4} {limit_x4.__class__}. Expecting int.",
+            )
+        if limit_x4 < -512 or limit_x4 > 511:
+            raise ValueError("Temperature out of range [-512, 511] quarter-degrees")
+        if register not in [self.REG_ATU, self.REG_ATL, self.REG_ATC]:
+            raise ValueError(f"Invalid register address {register}")
+        if (limit_x4 < -160 or limit_x4 > 500) and self._debug:
             print(
                 "[WARN] Temperature outside of operational range, limit won't be ever reached.",
             )
-        if register not in [self.REG_ATU, self.REG_ATL, self.REG_ATC]:
-            raise ValueError(f"Invalid register address {register}")
 
-        buf = bytearray(b"\x00\x00")
+        # Keep the 11-bit two's-complement value and shift it to the register bit position
+        raw: int = (limit_x4 & 0x7FF) << 2
 
-        # If limit is negative set sign fifth bit ON otherwise leave it OFF
-        if limit < 0:
-            sign = 0x10
-        else:
-            sign = 0x00
+        # Split the complete register value into the two bytes sent over I2C
+        self._buf[0] = (raw >> 8) & 0xFF
+        self._buf[1] = raw & 0xFF
 
-        # If limit is between -1 and 0 (like -0.25) set integral to 0xFF (-0 in 2's complement)
-        if -1 < limit < 0:
-            integral: int = 0xFF
-        # Otherwise truncate limit to a int and keep only the rightmost byte
-        else:
-            integral: int = int(limit) & 0xFF
-
-        # Calculate the fractional part by keeping the 2 rightmost bits of the integer division
-        # of 0.25 (the sensitivity) and the remainder part of the decimal part of limit
-        frac_normal: int = int((limit - integral) / 0.25) & 0x03
-
-        # Build the send buffer highest byte combining (bitwise-or) sign and the integral
-        # right-shifted by 4
-        buf[0] = sign | (integral >> 4)
-        # Build the send buffer lowest byte combining (bitwise-or) the integral
-        # left-shifted by 4 and the fractional part left shifted by 2 (last 2 bit are 0)
-        buf[1] = (integral << 4) | (frac_normal << 2)
-
-        self._i2c.writeto_mem(self._addr, register, buf)
+        self._i2c.writeto_mem(self._addr, register, self._buf)
 
         if self._debug:
-            check: bytes = self._i2c.readfrom_mem(self._addr, register, 2)
-            if check != buf:
+            self._i2c.readfrom_mem_into(self._addr, register, self._buf)
+            check: int = (self._buf[0] << 8) | self._buf[1]
+            if check != raw:
                 print(
-                    f"[WARN] Failed to set alert limit. Set {buf[0]:08b}-{buf[1]:08b}",
-                    f"but got {check[0]:08b}-{check[1]:08b}",
+                    f"[WARN] Failed to set alert limit. Set {raw:016b}",
+                    f"but got {check:016b}",
                 )
 
     def shutdown(self) -> None:
@@ -451,8 +477,8 @@ class MCP9808(object):
         Returns:
             ``bool``: The alert status.
         """
-        self._get_config()
-        return self.alert
+        self.refresh()
+        return self._alert
 
     def enable_alert(self) -> None:
         """Enable the alert output.
@@ -510,10 +536,10 @@ class MCP9808(object):
 
         Args:
             upper_limit (float | int): The upper limit to set.
-                                       It will rounded to the nearest 0.25°C.
+                                       It will be rounded to the nearest 0.25°C.
         Raises:
             ``TypeError``: If the limit is not a float or int.
-            ``ValueError``: If the limit is out of the range [-128, 127].
+            ``ValueError``: If the limit is out of the range [-128, 127.75].
         Debug:
             - Issue a warning if the threshold is outside of the operational range.
             - Issue a warning if the alert limit was not set correctly.
@@ -522,14 +548,25 @@ class MCP9808(object):
         """
         self._set_alert_limit(upper_limit, self.REG_ATU)
 
+    def set_alert_upper_limit_x4(self, upper_limit_x4: int) -> None:
+        """Set the alert upper limit in signed quarter-degree units.
+
+        Args:
+            upper_limit_x4 (int): The upper limit multiplied by four.
+        Returns:
+            ``None``
+        """
+        self._set_alert_limit_x4(upper_limit_x4, self.REG_ATU)
+
     def set_alert_lower_limit(self, lower_limit: float) -> None:
         """Set the alert lower limit.
 
         Args:
             lower_limit (float | int): The lower limit to set.
+                                       It will be rounded to the nearest 0.25°C.
         Raises:
             ``TypeError``: If the limit is not a float or int.
-            ``ValueError``: If the limit is out of the range [-128, 127].
+            ``ValueError``: If the limit is out of the range [-128, 127.75].
         Debug:
             - Issue a warning if the threshold is outside of the operational range.
             - Issue a warning if the alert limit was not set correctly.
@@ -538,14 +575,25 @@ class MCP9808(object):
         """
         self._set_alert_limit(lower_limit, self.REG_ATL)
 
+    def set_alert_lower_limit_x4(self, lower_limit_x4: int) -> None:
+        """Set the alert lower limit in signed quarter-degree units.
+
+        Args:
+            lower_limit_x4 (int): The lower limit multiplied by four.
+        Returns:
+            ``None``
+        """
+        self._set_alert_limit_x4(lower_limit_x4, self.REG_ATL)
+
     def set_alert_crit_limit(self, crit_limit: float) -> None:
         """Set the alert critical limit.
 
         Args:
             crit_limit (float | int): The critical limit to set.
+                                      It will be rounded to the nearest 0.25°C.
         Raises:
             ``TypeError``: If the limit is not a float or int.
-            ``ValueError``: If the limit is out of the range [-128, 127].
+            ``ValueError``: If the limit is out of the range [-128, 127.75].
         Debug:
             - Issue a warning if the threshold is outside of the operational range.
             - Issue a warning if the alert limit was not set correctly.
@@ -554,27 +602,38 @@ class MCP9808(object):
         """
         self._set_alert_limit(crit_limit, self.REG_ATC)
 
+    def set_alert_crit_limit_x4(self, crit_limit_x4: int) -> None:
+        """Set the alert critical limit in signed quarter-degree units.
+
+        Args:
+            crit_limit_x4 (int): The critical limit multiplied by four.
+        Returns:
+            ``None``
+        """
+        self._set_alert_limit_x4(crit_limit_x4, self.REG_ATC)
+
     def get_temperature(self) -> float:
         """Get the temperature from the sensor.
 
         Returns:
             ``float``: The temperature in degrees Celsius.
         """
-        # Read temperature register from sensor
-        buf: bytes = self._i2c.readfrom_mem(self._addr, self.REG_TEM, 2)
-        # Extract the sign bit
-        sign: int = buf[0] & 0x10
-        # Calculate the 4 upper bit of the integral by left shifting the first byte by 4
-        upper: int = (buf[0] << 4) & 0xFF
-        # Calculate the 4 lower bit of the integral and the fractional part into a float
-        # dividing by 16 the second buf byte
-        lower: float = (buf[1] & 0xFF) / 16
-        # Calculate the temperature as a float, adding the upper byte (leftmost 4 bit of integral)
-        # and the lower byte (rightmost 4 bit of integral + fractional).
-        # In case of negative value subtract 256 from the sum to convert from 2's complement 8+4bit
-        # fractional value to negative float
-        temp: float = (upper + lower) - 256 if sign else upper + lower
-        return temp
+        return self.get_temperature_x16() / 16
+
+    def get_temperature_x16(self) -> int:
+        """Get the temperature as signed sixteenth-degree units.
+
+        Returns:
+            ``int``: The temperature multiplied by sixteen.
+        """
+        # Read the temperature register into the reusable buffer
+        self._i2c.readfrom_mem_into(self._addr, self.REG_TEM, self._buf)
+        # Remove the alert flags and combine the 13-bit two's-complement value
+        temperature_x16: int = ((self._buf[0] & 0x1F) << 8) | self._buf[1]
+        # Convert a negative 13-bit value to a signed MicroPython integer
+        if temperature_x16 & 0x1000:
+            temperature_x16 -= 0x2000
+        return temperature_x16
 
     def get_alert_triggers(self) -> tuple[bool, bool, bool]:
         """Get the alert triggers.
@@ -588,14 +647,14 @@ class MCP9808(object):
                 The second element is True if the temperature is greater than the upper limit.
                 The third element is True if the temperature is less than the lower limit.
         """
-        # Read temperature register from sensor
-        buf: bytes = self._i2c.readfrom_mem(self._addr, self.REG_TEM, 2)
+        # Read temperature register into the reusable buffer
+        self._i2c.readfrom_mem_into(self._addr, self.REG_TEM, self._buf)
         # Extract the 16th bit (last), Ta vs. Tcrit.    False = Ta < Tcrit   | True = Ta >= Tcrit
-        ta_tcrit = bool(buf[0] & 0x80)
+        ta_tcrit = bool(self._buf[0] & 0x80)
         # Extract the 15th bit, Ta vs. Tupper.          False = Ta <= Tupper | True = Ta > Tupper
-        ta_tupper = bool(buf[0] & 0x40)
+        ta_tupper = bool(self._buf[0] & 0x40)
         # Extract the 14th bit, Ta vs Tlower.           False = Ta >= Tlower | True = Ta < Tlower
-        ta_tlower = bool(buf[0] & 0x20)
+        ta_tlower = bool(self._buf[0] & 0x20)
 
         return ta_tcrit, ta_tupper, ta_tlower
 
@@ -607,6 +666,7 @@ class MCP9808(object):
                 Valid values are RES_0_5, RES_0_25, RES_0_125, RES_0_0625.
                 Defaults to RES_0_0625.
         Raises:
+            TypeError: If the resolution is not an int.
             ValueError: If the resolution is not a valid value.
         Debug:
             - Issue a warning if the resolution was not set correctly.
@@ -614,30 +674,31 @@ class MCP9808(object):
             ``None``
         """
         # Check if resolution is a compatible value
+        if resolution.__class__ is not int:
+            raise TypeError(
+                f"resolution: {resolution} {resolution.__class__}. Expecting an int.",
+            )
         if resolution not in [RES_0_5, RES_0_25, RES_0_125, RES_0_0625]:
             raise ValueError(
                 f"Invalid resolution: {resolution}. Value should be between 0 and 3 inclusive.",
             )
 
-        buf = bytearray(b"\x00")
-
-        buf[0] |= resolution & 0x03
-        self._i2c.writeto_mem(self._addr, self.REG_RES, buf)
+        self._buf1[0] = resolution & 0x03
+        self._i2c.writeto_mem(self._addr, self.REG_RES, self._buf1)
         if self._debug:
-            check = self._i2c.readfrom_mem(self._addr, self.REG_RES, 1)
-            if check != buf:
+            self._i2c.readfrom_mem_into(self._addr, self.REG_RES, self._buf1)
+            if self._buf1[0] != resolution:
                 print(
-                    f"[WARN] Failed to set resolution. Set {resolution} got {check[0]}"
+                    f"[WARN] Failed to set resolution. Set {resolution} got {self._buf1[0]}"
                 )
 
     @property
     def hyst_mode(self) -> int:
-        """Get the hysteresis mode.
+        """Get the cached hysteresis mode.
 
         Returns:
             ``int``: The hysteresis mode.
         """
-        self._get_config()
         return self._hyst_mode
 
     @hyst_mode.setter
@@ -648,74 +709,89 @@ class MCP9808(object):
             ``hyst_mode`` (int): The hysteresis mode to set.
                 Valid values are HYST_00, HYST_15, HYST_30, HYST_60.
         """
+        if hyst_mode.__class__ is not int:
+            raise TypeError(
+                f"hyst_mode: {hyst_mode} {hyst_mode.__class__}. Expecting an int.",
+            )
         self._set_config(hyst_mode=hyst_mode)
 
     @property
     def shdn(self) -> bool:
-        """Get the shutdown mode.
+        """Get the cached shutdown mode.
 
         Returns:
             ``bool``: The shutdown mode.
         """
-        self._get_config()
         return self._shdn
 
     @property
     def crit_lock(self) -> bool:
-        """Get the critical temperature register lock.
+        """Get the cached critical temperature register lock.
 
         Returns:
             ``bool``: The critical temperature register lock.
         """
-        self._get_config()
         return self._crit_lock
 
     @property
     def alerts_lock(self) -> bool:
-        """Get the alerts temperature registers lock.
+        """Get the cached alerts temperature registers lock.
 
         Returns:
             ``bool``: The alerts temperature registers lock.
         """
-        self._get_config()
         return self._alerts_lock
 
     @property
-    def alert(self) -> bool:
-        """Get the alert control.
+    def irq_clear_bit(self) -> bool:
+        """Get the cached interrupt clear bit.
 
         Returns:
-            ``bool``: The alert control.
+            ``bool``: The interrupt clear bit.
         """
-        self._get_config()
+        return self._irq_clear_bit
+
+    @property
+    def alert(self) -> bool:
+        """Get the cached alert status.
+
+        Returns:
+            ``bool``: The alert output status.
+        """
         return self._alert
 
     @property
     def alert_ctrl(self) -> bool:
-        """Get the alert control.
+        """Get the cached alert control.
 
         Returns:
             ``bool``: The alert control.
         """
-        self._get_config()
         return self._alert_ctrl
 
     @property
     def alert_sel(self) -> bool:
-        """Get the alert output select.
+        """Get the cached alert output select.
 
         Returns:
             ``bool``: The alert output select.
         """
-        self._get_config()
         return self._alert_sel
 
     @property
+    def alert_pol(self) -> bool:
+        """Get the cached alert output polarity.
+
+        Returns:
+            ``bool``: The alert output polarity.
+        """
+        return self._alert_pol
+
+    @property
     def alert_mode(self) -> bool:
-        """Get the alert output mode.
+        """Get the cached alert output mode.
 
         Returns:
             ``bool``: The alert output mode.
         """
-        self._get_config()
         return self._alert_mode

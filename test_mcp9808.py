@@ -1,34 +1,12 @@
-"""MIT License
+# SPDX-FileCopyrightText: 2024-2026 Marco Miano
+# SPDX-License-Identifier: MIT
 
-Copyright (c) 2024 Marco Miano
+"""Microchip MCP9808 driver/sensor test suite for MicroPython
 
-Permission is hereby granted, free of charge, to any person obtaining a copy
-of this software and associated documentation files (the "Software"), to deal
-in the Software without restriction, including without limitation the rights
-to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
-copies of the Software, and to permit persons to whom the Software is
-furnished to do so, subject to the following conditions:
+THE MCP9808 IS A COMPLEX SENSOR WITH MANY FEATURES. IT IS ADVISABLE TO READ THE DATASHEET.
 
-The above copyright notice and this permission notice shall be included in all
-copies or substantial portions of the Software.
-
-THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
-IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
-FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
-AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
-LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
-OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
-SOFTWARE.
-
-
-
-
-Microchip MCP9808 driver/sensor test suite for MicroPython
-
-THE MCP9808 IS A COMPLEX SENSOR WITH MANY FEATURES. IS IT ADVISABLE TO READ THE DATASHEET.
-
-DO NOT ACCESS REGISTERS WITH ADDRESSES HIGHER THAN 0x08 AS THEY CONTAIN CALIBRATION CODES.
-DOING SO MAY IRREPARABLY DAMAGE THE SENSOR.
+DO NOT ACCESS RESERVED REGISTERS WITH ADDRESSES HIGHER THAN 0x08.
+ACCESSING THEM IS UNSUPPORTED AND MAY CAUSE UNSPECIFIED SENSOR BEHAVIOUR.
 
 This test suite is designed to check the correct operation of the MCP9808 sensor driver and the
 sensor itself. It is advisable to run this test suite if anything is changed in the driver code,
@@ -58,10 +36,12 @@ Prerequisites:
 """
 
 import unittest
+from time import sleep_ms
+
+from machine import Pin, SoftI2C
+
 import mcp9808
 from mcp9808 import MCP9808
-from machine import SoftI2C, Pin
-from time import sleep_ms
 
 ##############################################
 # Change the pin numbers to match your setup #
@@ -71,19 +51,59 @@ alert_pin = Pin(18, Pin.IN, pull=Pin.PULL_UP)
 i2c_bus = SoftI2C(scl=Pin(17), sda=Pin(16), freq=400000)
 
 
+class CountingI2C:
+    """Proxy an I2C object and count register reads."""
+
+    def __init__(self, i2c: SoftI2C) -> None:
+        self.i2c: SoftI2C = i2c
+        self.read_count: int = 0
+
+    def readfrom_mem(self, addr: int, register: int, size: int) -> bytes:
+        self.read_count += 1
+        return self.i2c.readfrom_mem(addr, register, size)
+
+    def readfrom_mem_into(self, addr: int, register: int, buf: bytearray) -> None:
+        self.read_count += 1
+        self.i2c.readfrom_mem_into(addr, register, buf)
+
+    def writeto_mem(self, addr: int, register: int, buf: bytes) -> None:
+        self.i2c.writeto_mem(addr, register, buf)
+
+
 class TestMCP9808(unittest.TestCase):
     @classmethod
     def setUpClass(cls):
         cls.power: Pin = power_pin
         cls.alert: Pin = alert_pin
         cls.i2c: SoftI2C = i2c_bus
-        cls.sensor = MCP9808(cls.i2c)
 
     def setUp(self) -> None:
         self.power.off()
         sleep_ms(20)
         self.power.on()
         sleep_ms(2000)
+        self.sensor = MCP9808(self.i2c)
+
+    def _assert_alert_limit_encodings(self, cases: tuple) -> None:
+        failures: list = []
+        for limit, expected in cases:
+            try:
+                self.sensor.set_alert_lower_limit(limit)
+                actual = self.i2c.readfrom_mem(
+                    self.sensor.BASE_ADDR,
+                    self.sensor.REG_ATL,
+                    2,
+                )
+                if actual != expected:
+                    failures.append(
+                        f"{limit}: got {actual.hex()}, expected {expected.hex()}",
+                    )
+            except ValueError as error:
+                failures.append(
+                    f"{limit}: got {error.__class__.__name__}: {error}, "
+                    f"expected {expected.hex()}",
+                )
+        self.assertEqual(failures, [])
 
     def test_powerup_defaults(self) -> None:
         self.assertEqual(self.sensor.hyst_mode, mcp9808.HYST_00)
@@ -97,6 +117,43 @@ class TestMCP9808(unittest.TestCase):
         self.assertFalse(self.sensor.alert_pol)
         self.assertFalse(self.sensor.alert_mode)
 
+    def test_read_only_config_properties(self) -> None:
+        # Check that callers cannot overwrite values without modifying the sensor
+        with self.assertRaises(AttributeError):
+            self.sensor.irq_clear_bit = True
+        with self.assertRaises(AttributeError):
+            self.sensor.alert_pol = True
+        # Set the alert polarity through the public method and check the property
+        self.sensor.set_alert_polarity(active_high=True)
+        self.assertTrue(self.sensor.alert_pol)
+
+    def test_cached_properties_and_refresh(self) -> None:
+        counting_i2c = CountingI2C(self.i2c)
+        sensor = MCP9808(counting_i2c)
+        counting_i2c.read_count = 0
+        # Reading cached properties must not perform hidden I2C transactions
+        self.assertFalse(sensor.shdn)
+        self.assertFalse(sensor.alert_ctrl)
+        self.assertFalse(sensor.alert_pol)
+        self.assertEqual(counting_i2c.read_count, 0)
+        # An explicit refresh performs exactly one configuration-register read
+        sensor.refresh()
+        self.assertEqual(counting_i2c.read_count, 1)
+
+    def test_constructor_verification(self) -> None:
+        counting_i2c = CountingI2C(self.i2c)
+        # Default construction reads two identity registers and the configuration
+        MCP9808(counting_i2c)
+        self.assertEqual(counting_i2c.read_count, 3)
+        # Verification can be skipped, leaving only the configuration read
+        counting_i2c.read_count = 0
+        sensor = MCP9808(counting_i2c, verify=False)
+        self.assertEqual(counting_i2c.read_count, 1)
+        # Verification remains available explicitly when it is needed later
+        counting_i2c.read_count = 0
+        sensor.verify()
+        self.assertEqual(counting_i2c.read_count, 2)
+
     def test_hysteresis_set(self) -> None:
         self.sensor.hyst_mode = mcp9808.HYST_15
         self.assertEqual(self.sensor.hyst_mode, mcp9808.HYST_15)
@@ -106,6 +163,135 @@ class TestMCP9808(unittest.TestCase):
         self.assertEqual(self.sensor.hyst_mode, mcp9808.HYST_60)
         self.sensor.hyst_mode = mcp9808.HYST_00
         self.assertEqual(self.sensor.hyst_mode, mcp9808.HYST_00)
+
+    def test_alert_limit_positive_encoding(self) -> None:
+        cases: tuple = (
+            (0, b"\x00\x00"),
+            (0.25, b"\x00\x04"),
+            (15.75, b"\x00\xfc"),
+            (16, b"\x01\x00"),
+            (43.5, b"\x02\xb8"),
+            (90, b"\x05\xa0"),
+        )
+        self._assert_alert_limit_encodings(cases)
+
+    def test_alert_limit_negative_encoding(self) -> None:
+        cases: tuple = (
+            (-16.25, b"\x1e\xfc"),
+            (-1.5, b"\x1f\xe8"),
+            (-0.25, b"\x1f\xfc"),
+        )
+        self._assert_alert_limit_encodings(cases)
+
+    def test_alert_limit_endpoints(self) -> None:
+        cases: tuple = (
+            (-128, b"\x18\x00"),
+            (127.75, b"\x07\xfc"),
+        )
+        self._assert_alert_limit_encodings(cases)
+
+    def test_alert_limit_rounding(self) -> None:
+        cases: tuple = (
+            (1.24, b"\x00\x14"),
+            (-1.24, b"\x1f\xec"),
+            (1.125, b"\x00\x10"),
+            (1.375, b"\x00\x18"),
+            (-1.125, b"\x1f\xf0"),
+            (-1.375, b"\x1f\xe8"),
+        )
+        self._assert_alert_limit_encodings(cases)
+
+    def test_alert_limit_out_of_range(self) -> None:
+        with self.assertRaises(ValueError):
+            self.sensor.set_alert_lower_limit(-128.01)
+        with self.assertRaises(ValueError):
+            self.sensor.set_alert_lower_limit(127.76)
+
+    def test_alert_limit_invalid_type(self) -> None:
+        with self.assertRaises(TypeError):
+            self.sensor.set_alert_lower_limit(None)
+        with self.assertRaises(TypeError):
+            self.sensor.set_alert_lower_limit("1")
+        with self.assertRaises(TypeError):
+            self.sensor.set_alert_lower_limit(True)
+
+    def test_alert_limit_register_selection(self) -> None:
+        self.sensor.set_alert_upper_limit(16.25)
+        self.sensor.set_alert_lower_limit(43.5)
+        self.sensor.set_alert_crit_limit(90)
+        self.assertEqual(
+            self.i2c.readfrom_mem(
+                self.sensor.BASE_ADDR,
+                self.sensor.REG_ATU,
+                2,
+            ),
+            b"\x01\x04",
+        )
+        self.assertEqual(
+            self.i2c.readfrom_mem(
+                self.sensor.BASE_ADDR,
+                self.sensor.REG_ATL,
+                2,
+            ),
+            b"\x02\xb8",
+        )
+        self.assertEqual(
+            self.i2c.readfrom_mem(
+                self.sensor.BASE_ADDR,
+                self.sensor.REG_ATC,
+                2,
+            ),
+            b"\x05\xa0",
+        )
+
+    def test_alert_limit_integer_api(self) -> None:
+        self.sensor.set_alert_upper_limit_x4(65)
+        self.sensor.set_alert_lower_limit_x4(-65)
+        self.sensor.set_alert_crit_limit_x4(360)
+        self.assertEqual(
+            self.i2c.readfrom_mem(
+                self.sensor.BASE_ADDR,
+                self.sensor.REG_ATU,
+                2,
+            ),
+            b"\x01\x04",
+        )
+        self.assertEqual(
+            self.i2c.readfrom_mem(
+                self.sensor.BASE_ADDR,
+                self.sensor.REG_ATL,
+                2,
+            ),
+            b"\x1e\xfc",
+        )
+        self.assertEqual(
+            self.i2c.readfrom_mem(
+                self.sensor.BASE_ADDR,
+                self.sensor.REG_ATC,
+                2,
+            ),
+            b"\x05\xa0",
+        )
+        with self.assertRaises(ValueError):
+            self.sensor.set_alert_lower_limit_x4(-513)
+        with self.assertRaises(ValueError):
+            self.sensor.set_alert_upper_limit_x4(512)
+        with self.assertRaises(TypeError):
+            self.sensor.set_alert_crit_limit_x4(1.0)
+
+    def test_temperature_integer_api(self) -> None:
+        temperature_x16 = self.sensor.get_temperature_x16()
+        self.assertEqual(temperature_x16.__class__, int)
+        # The float convenience API must remain within one sample step
+        temperature = self.sensor.get_temperature()
+        self.assertTrue(abs(temperature_x16 / 16 - temperature) <= 0.0625)
+
+    def test_alert_status_single_read(self) -> None:
+        counting_i2c = CountingI2C(self.i2c)
+        sensor = MCP9808(counting_i2c)
+        counting_i2c.read_count = 0
+        sensor.get_alert_status()
+        self.assertEqual(counting_i2c.read_count, 1)
 
     def test_shutdown(self) -> None:
         self.sensor.shutdown()
@@ -135,7 +321,7 @@ class TestMCP9808(unittest.TestCase):
         # Try to enable alerts
         self.sensor.enable_alert()
         # Alerts should not be enabled
-        self.assertTrue(self.sensor.alerts_lock)
+        self.assertFalse(self.sensor.alert_ctrl)
         # Reset sensor
         self.setUp()
         # Check if the alerts limit registers are unlocked
@@ -362,7 +548,7 @@ class TestMCP9808(unittest.TestCase):
         self.assertEqual(self.sensor.get_alert_triggers(), (True, True, False))
         # Clear IRQ
         self.sensor.irq_clear()
-        # Check if alert is NOT cleard
+        # Check if alert is NOT cleared
         self.assertEqual(self.alert.value(), 0)
         # Check if correct alert trigger bit is still set
         self.assertEqual(self.sensor.get_alert_triggers(), (True, True, False))
